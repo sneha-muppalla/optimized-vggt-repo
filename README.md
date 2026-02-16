@@ -8,14 +8,14 @@ An optimized implementation of VGGT focused on high-throughput 3D reconstruction
 
 ---
 
-## 🔍 The Challenge"
+## The Challenge
 Standard VGGT implementations face a "scaling wall" when processing high-frame-count sequences (100+ images) due to
 1. **Kernel Launch Overhead:** Processing frames sequentially creates significant GPU idle time.
 2. **Unnecesary Computation** Early layers in the Alternating Attention (AA) blocks perform Global Attention before the model has established strong local geometric features.
 
 ---
 
-## 🛠️ My Optimizations
+## My Optimizations
 
 ### 1. Fused Batch Frame Attention
 Instead of iterating through frames, I refactored the `_process_frame_attention` method in `aggregator.py` to treat the sequence length ($S$) as part of the batch dimension ($BxS$).
@@ -45,7 +45,8 @@ Modified `attention.py` to guarantee the use of **SDPA (Scaled Dot Product)
 * `vggt/layers/attention.py`: Fused SDPA and memory contiguity fixes.
 * `profile_vggt.py`: Benchmarking script with NVTX instrumentation.
 
-## 🔧 Environment Setup
+---
+## Environment Setup
 Developed and profiled on **RunPod** using a dedicated **NVIDIA A40** instance.
 
 ```bash
