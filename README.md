@@ -40,6 +40,11 @@ Modified `attention.py` to guarantee the use of **SDPA (Scaled Dot Product)
 * Precision: $BF16$ Mixed Precision
 ---
 
+### Modificatiios 
+* `vggt/models/aggregator.py`: Optimized batching and layer pruning logic.
+* `vggt/layers/attention.py`: Fused SDPA and memory contiguity fixes.
+* `profile_vggt.py`: Benchmarking script with NVTX instrumentation.
+
 ## 🔧 Environment Setup
 Developed and profiled on **RunPod** using a dedicated **NVIDIA A40** instance.
 
