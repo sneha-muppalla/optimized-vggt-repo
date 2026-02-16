@@ -8,17 +8,17 @@ An optimized implementation of VGGT focused on high-throughput 3D reconstruction
 
 ---
 
-## 🔍 The Challenge"
+## The Challenge"
 Standard VGGT implementations face a "scaling wall" when processing high-frame-count sequences (100+ images) due to
 1. **Kernel Launch Overhead:** Processing frames sequentially creates significant GPU idle time.
 2. **Unnecesary Computation** Early layers in the Alternating Attention (AA) blocks perform Global Attention before the model has established strong local geometric features.
 
 ---
 
-## 🛠️ My Optimizations
+## My Optimizations
 
 ### 1. Fused Batch Frame Attention
-Instead of iterating through frames, I refactored the `_process_frame_attention` method in `aggregator.py` to treat the sequence length ($S$) as part of the batch dimension ($BxS$).
+Instead of iterating through frames, I refactored the `_process_frame_attention` method in `aggregator.py` to treat the sequence length ($S$) as part of the batch dimension ($BxS$)
 * **Old Way:** 100 sequential calls to the GPU.
 * **Optimized:** 1 fused batch call processing 100 images in parallel.
 
@@ -31,21 +31,20 @@ Modified `attention.py` to guarantee the use of **SDPA (Scaled Dot Product)
 1. Enforced memory contiguity `(.contiguous())` on Q, K, and V tensors.
 
 ---
-
-### Tech Stack & Environment
+## Tech Stack & Environment
 * Hardware: NVIDIA A40 (100GB VRAM)
 * Cloud Provider: RunPod
 * Profiling: NVIDIA Nsight Systems (nsys)
 * Runtime: PyTorch 2.2+, CUDA 12.1
 * Precision: $BF16$ Mixed Precision
 ---
-
-### Modificatiios 
+## Modificatiios 
 * `vggt/models/aggregator.py`: Optimized batching and layer pruning logic.
 * `vggt/layers/attention.py`: Fused SDPA and memory contiguity fixes.
 * `profile_vggt.py`: Benchmarking script with NVTX instrumentation.
-
-## 🔧 Environment Setup
+=
+---
+## Environment Setup
 Developed and profiled on **RunPod** using a dedicated **NVIDIA A40** instance.
 
 ```bash
