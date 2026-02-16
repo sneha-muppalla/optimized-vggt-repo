@@ -4,29 +4,45 @@
 [![Framework: PyTorch](https://img.shields.io/badge/Framework-PyTorch%202.x-orange.svg)](https://pytorch.org/)
 [![Optimization: FlashAttention-2](https://img.shields.io/badge/Optimization-FlashAttention--2-blue.svg)](https://github.com/Dao-AILab/flash-attention)
 
-A systems-focused optimization of the **Visual Geometry Grounded Transformer (VGGT)**. This project identifies and resolves scaling bottlenecks in multi-frame 3D reconstruction, specifically targeting **NVIDIA Ampere (A40)** architecture.
+An optimized implementation of VGGT focused on high-throughput 3D reconstruction and geometric grounding. This project specifically targets **NVIDIA Ampere (A40**) hardware, achieving a ~3x speedup in frame-wise attention for large image sequences.
 
 ---
 
-## 🔍 The Problem: The "Scaling Wall"
-In standard VGGT implementations, processing large image sequences (100+ frames) causes a massive latency spike. My profiling via **NVIDIA Nsight Systems** revealed:
-1. **Kernel Launch Overhead:** Processing frames sequentially ($B \cdot S$ as separate items) led to the GPU being "starved" while waiting for the CPU to launch 100+ separate kernels.
-2. **Global Redundancy:** Early transformer layers performed expensive Global Attention before establishing local geometric priors.
-
-
+## 🔍 The Challenge"
+Standard VGGT implementations face a "scaling wall" when processing high-frame-count sequences (100+ images) due to
+1. **Kernel Launch Overhead:** Processing frames sequentially creates significant GPU idle time.
+2. **Unnecesary Computation** Early layers in the Alternating Attention (AA) blocks perform Global Attention before the model has established strong local geometric features.
 
 ---
 
-## 🛠️ Performance Optimizations
+## 🛠️ My Optimizations
 
 ### 1. Fused Batch Frame Attention
-Instead of iterating through frames, I refactored `aggregator.py` to treat the sequence length ($S$) as part of the batch dimension.
+Instead of iterating through frames, I refactored the `_process_frame_attention` method in `aggregator.py` to treat the sequence length ($S$) as part of the batch dimension ($BxS$).
 * **Old Way:** 100 sequential calls to the GPU.
 * **Optimized:** 1 fused batch call processing 100 images in parallel.
 
 ### 2. Early Layer Pruning (Global → Frame)
-Based on research intuition, I implemented **Layer Pruning** in the first 4 blocks of the Aggregator. 
-* **The Logic:** Global attention is converted to Frame attention in early stages to save VRAM and compute, as cross-frame correspondences aren't stable until deeper in the network.
+NSight Systems displayed long intervals of frame attention compared to global attention in the first few layers. So I implemented **Layer Pruning** in the first 4 blocks of the Aggregator. 
+* **The Logic:** Global attention is converted to Frame attention in early stages to save VRAM and compute, as cross-frame correspondences aren't stable until deeper in the network.Saved ~50ms of execution time per inference pass without losing geometric fidelity.
 
 ### 3. FlashAttention-2 Enforcement
-Modified `attention.py` to guarantee the use of **SDPA (Scaled Dot
+Modified `attention.py` to guarantee the use of **SDPA (Scaled Dot Product)
+1. Enforced memory contiguity `(.contiguous())` on Q, K, and V tensors.
+
+---
+
+### Tech Stack & Environment
+* Hardware: NVIDIA A40 (100GB VRAM)
+* Cloud Provider: RunPod
+* Profiling: NVIDIA Nsight Systems (nsys)
+* Runtime: PyTorch 2.2+, CUDA 12.1
+* Precision: $BF16$ Mixed Precision
+---
+
+## 🔧 Environment Setup
+Developed and profiled on **RunPod** using a dedicated **NVIDIA A40** instance.
+
+```bash
+# To replicate profiling results
+nsys profile --trace=cuda,nvtx,osrt -o vggt_optimized_report -f true python profile_vggt.py
